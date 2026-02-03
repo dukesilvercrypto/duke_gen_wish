@@ -1,77 +1,95 @@
-
-## **`authkey_waiter.ps1`** (Final Clean Version):
-
-```powershell
 # ============================================
-# Genshin AuthKey Waiter
+# Genshin AuthKey Waiter - One-Line Version
+# Command: iwr -useb https://git.io/duke-wish | iex
+# GitHub: https://github.com/dukesilvercrypto/duke_gen_wish
 # Created by: Duke Silver
-# GitHub: https://github.com/dukesilvercrypto/genshin-authkey-waiter
 # ============================================
 
-# Clear screen
-Clear-Host
+# Detect if running via one-line installer
+$IsOneLineInstall = $MyInvocation.MyCommand.Name -eq $null
 
-# Show header
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   Genshin AuthKey Waiter              " -ForegroundColor White
-Write-Host "   by Duke Silver                      " -ForegroundColor Magenta
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Status: Waiting..." -ForegroundColor Yellow
-Write-Host ""
+# If not interactive, skip pause at end
+if ($IsOneLineInstall) {
+    $AutoClose = $true
+} else {
+    # Check command line arguments
+    $AutoClose = $false
+}
 
 # Function to show progress
-function Show-Progress([string]$message) {
-    Write-Host "`r[$((Get-Date).ToString('HH:mm:ss'))] $message" -ForegroundColor Gray -NoNewline
+function Write-ProgressMessage([string]$Message) {
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message" -ForegroundColor Cyan
 }
 
-# Function to show success
-function Show-Success([string]$message) {
-    Write-Host "`r[✓] $message" -ForegroundColor Green
-}
-
-# Function to show error
-function Show-Error([string]$message) {
-    Write-Host "`r[✗] $message" -ForegroundColor Red
-}
-
-# Main waiting function
-function Wait-ForAuthKey {
-    $startTime = Get-Date
-    $timeout = 600  # 10 minutes
+# Function to show result
+function Show-Result([string]$AuthKey, [string]$Region) {
+    Write-Host ""
+    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "        ✅ AUTHKEY EXTRACTED!            " -ForegroundColor White -BackgroundColor DarkGreen
+    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "🌍 Region: $Region" -ForegroundColor Cyan
+    Write-Host "📏 Length: $($AuthKey.Length) characters" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "🔑 Your AuthKey:" -ForegroundColor Yellow
+    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    Write-Host ""
+    Write-Host $AuthKey -ForegroundColor White
+    Write-Host ""
+    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
     
-    # Step 1: Wait for game
-    Show-Progress "Waiting for Genshin Impact..."
-    while ($true) {
-        # Check for game logs
-        $logPath = "$env:USERPROFILE\AppData\LocalLow\miHoYo\Genshin Impact\output_log.txt"
-        $cnLogPath = "$env:USERPROFILE\AppData\LocalLow\miHoYo\$([char]0x539f)$([char]0x795e)\output_log.txt"
-        
-        if (Test-Path $logPath) {
-            $gameLog = $logPath
-            Show-Success "Game detected (Global)"
-            break
-        }
-        elseif (Test-Path $cnLogPath) {
-            $gameLog = $cnLogPath
-            Show-Success "Game detected (China)"
-            break
-        }
-        
-        # Check timeout
-        if (((Get-Date) - $startTime).TotalSeconds -gt $timeout) {
-            Show-Error "Timeout: Game not found"
-            return $null
-        }
-        
-        Start-Sleep -Seconds 2
+    # Copy to clipboard
+    try {
+        Set-Clipboard -Value $AuthKey
+        Write-Host "📋 Copied to clipboard!" -ForegroundColor Green
+    } catch {
+        Write-Host "⚠️ Could not copy to clipboard" -ForegroundColor Yellow
+    }
+}
+
+# Main extraction function
+function Extract-AuthKey {
+    Write-ProgressMessage "Starting Genshin AuthKey extraction..."
+    Write-Host ""
+
+    # Check if game is running
+    $logPath = "$env:USERPROFILE\AppData\LocalLow\miHoYo\Genshin Impact\output_log.txt"
+    $cnLogPath = "$env:USERPROFILE\AppData\LocalLow\miHoYo\$([char]0x539f)$([char]0x795e)\output_log.txt"
+    
+    if (-not (Test-Path $logPath) -and -not (Test-Path $cnLogPath)) {
+        Write-Host "❌ Genshin Impact not detected!" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Please:" -ForegroundColor Yellow
+        Write-Host "1. Open Genshin Impact" -ForegroundColor Gray
+        Write-Host "2. Open Wish History" -ForegroundColor Gray
+        Write-Host "3. Run this command again" -ForegroundColor Gray
+        return $null
     }
     
-    # Step 2: Wait for wish history
-    Show-Progress "Waiting for wish history..."
-    while ($true) {
+    # Determine which log to use
+    if (Test-Path $logPath) {
+        $gameLog = $logPath
+        Write-ProgressMessage "Detected Global server"
+    } else {
+        $gameLog = $cnLogPath
+        Write-ProgressMessage "Detected China server"
+    }
+    
+    # Wait for wish history
+    Write-ProgressMessage "Waiting for wish history..."
+    Write-Host "   🔄 Please open Wish History in game" -ForegroundColor Yellow
+    Write-Host "   ⏱️  Waiting up to 2 minutes..." -ForegroundColor Gray
+    
+    $startTime = Get-Date
+    $timeout = 120  # 2 minutes
+    $found = $false
+    $authkey = $null
+    $region = "Unknown"
+    
+    while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
         try {
-            # Read game directory from logs
+            # Read game logs
             $logs = Get-Content $gameLog -ErrorAction Stop
             $gameDirMatch = $logs -match ".:/.+(GenshinImpact_Data|YuanShen_Data)"
             
@@ -82,19 +100,19 @@ function Wait-ForAuthKey {
                 # Check cache
                 $cacheDir = "$gameDir/webCaches"
                 if (Test-Path $cacheDir) {
-                    $latestCache = Get-ChildItem $cacheDir | Sort LastWriteTime -Desc | Select -First 1
+                    $latestCache = Get-ChildItem $cacheDir | Sort-Object LastWriteTime -Descending | Select-Object -First 1
                     $cacheFile = "$($latestCache.FullName)/Cache/Cache_Data/data_2"
                     
                     if (Test-Path $cacheFile) {
                         # Extract authkey
-                        $tempFile = "$env:TEMP\auth_temp_$(Get-Random).bin"
-                        Copy-Item $cacheFile $tempFile -Force
+                        $tempFile = "$env:TEMP\duke_wish_$(Get-Random).tmp"
+                        Copy-Item $cacheFile $tempFile -Force -ErrorAction Stop
                         
-                        $content = Get-Content -Raw $tempFile
-                        Remove-Item $tempFile -Force
+                        $content = Get-Content -Raw $tempFile -ErrorAction Stop
+                        Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
                         
-                        # Find authkey in cache
-                        $urls = $content -split "1/0/" | Where {$_ -match "webview_gacha"}
+                        # Find URLs with webview_gacha
+                        $urls = $content -split "1/0/" | Where-Object { $_ -match "webview_gacha" }
                         
                         foreach ($url in $urls) {
                             if ($url -match "(https.+?game_biz=)") {
@@ -102,19 +120,24 @@ function Wait-ForAuthKey {
                                 
                                 # Extract region
                                 if ($fullUrl -match '&region=([^&]+)') {
-                                    $region = $matches[1]
+                                    $regionCode = $matches[1]
+                                    switch ($regionCode) {
+                                        "os_asia" { $region = "Asia" }
+                                        "os_usa" { $region = "America" }
+                                        "os_euro" { $region = "Europe" }
+                                        "os_cht" { $region = "TW/HK/MO" }
+                                        default { $region = $regionCode }
+                                    }
                                 }
                                 
                                 # Extract authkey
                                 if ($fullUrl -match 'authkey=([^&]+)') {
                                     $authkey = $matches[1]
                                     
-                                    # Return result
-                                    return @{
-                                        Success = $true
-                                        AuthKey = $authkey
-                                        Region = $region
-                                        Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+                                    # Validate length
+                                    if ($authkey.Length -gt 100 -and $authkey.Length -lt 5000) {
+                                        $found = $true
+                                        break
                                     }
                                 }
                             }
@@ -126,61 +149,61 @@ function Wait-ForAuthKey {
             # Continue waiting
         }
         
-        # Check timeout
-        if (((Get-Date) - $startTime).TotalSeconds -gt $timeout) {
-            Show-Error "Timeout: Wish history not opened"
-            return $null
+        if ($found) {
+            break
         }
         
-        Start-Sleep -Seconds 3
+        # Show waiting indicator
+        $elapsed = [math]::Round(((Get-Date) - $startTime).TotalSeconds)
+        Write-Host "`r⏱️  Waiting... ${elapsed}s" -NoNewline -ForegroundColor Gray
+        Start-Sleep -Seconds 2
+    }
+    
+    Write-Host ""
+    
+    if ($found) {
+        return @{ AuthKey = $authkey; Region = $region }
+    } else {
+        Write-Host "❌ Could not find authkey within timeout" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Make sure you:" -ForegroundColor Yellow
+        Write-Host "1. Opened Wish History in game" -ForegroundColor Gray
+        Write-Host "2. Switched between wish tabs" -ForegroundColor Gray
+        Write-Host "3. Waited 10 seconds for data to load" -ForegroundColor Gray
+        return $null
     }
 }
 
 # Main execution
 try {
-    $result = Wait-ForAuthKey
+    $result = Extract-AuthKey
     
-    if ($result -and $result.Success) {
-        # Clear and show success
-        Clear-Host
-        Write-Host ""
-        Write-Host "══════════════════════════════════════════" -ForegroundColor Green
-        Write-Host "        ✅ AUTHKEY EXTRACTED!            " -ForegroundColor White -BackgroundColor DarkGreen
-        Write-Host "══════════════════════════════════════════" -ForegroundColor Green
-        Write-Host ""
-        Write-Host "Region: $($result.Region)" -ForegroundColor Cyan
-        Write-Host "Time: $($result.Timestamp)" -ForegroundColor Gray
-        Write-Host ""
-        Write-Host "══════════════════════════════════════════" -ForegroundColor Green
-        Write-Host "🔑 Your AuthKey:" -ForegroundColor Yellow
-        Write-Host "══════════════════════════════════════════" -ForegroundColor Green
-        Write-Host ""
-        Write-Host $result.AuthKey -ForegroundColor White
-        Write-Host ""
-        Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    if ($result) {
+        Show-Result -AuthKey $result.AuthKey -Region $result.Region
         
-        # Copy to clipboard
-        Set-Clipboard -Value $result.AuthKey
-        Write-Host "📋 Copied to clipboard!" -ForegroundColor Green
-        Write-Host ""
+        # Wait for user if not auto-close
+        if (-not $AutoClose) {
+            Write-Host ""
+            Write-Host "Press Enter to exit..." -NoNewline
+            $null = Read-Host
+        }
         
     } else {
-        Write-Host ""
-        Write-Host "❌ Failed to extract authkey" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Make sure to:" -ForegroundColor Yellow
-        Write-Host "1. Open Genshin Impact" -ForegroundColor Gray
-        Write-Host "2. Click Wish icon" -ForegroundColor Gray
-        Write-Host "3. Open wish history" -ForegroundColor Gray
-        Write-Host "4. Wait 10 seconds" -ForegroundColor Gray
+        # Exit with error
+        if (-not $AutoClose) {
+            Write-Host ""
+            Write-Host "Press Enter to exit..." -NoNewline
+            $null = Read-Host
+        }
+        exit 1
     }
     
 } catch {
-    Write-Host ""
     Write-Host "❌ Error: $($_.Exception.Message)" -ForegroundColor Red
+    if (-not $AutoClose) {
+        Write-Host ""
+        Write-Host "Press Enter to exit..." -NoNewline
+        $null = Read-Host
+    }
+    exit 1
 }
-
-# Wait before exit
-Write-Host ""
-Write-Host "Press Enter to exit..." -NoNewline
-$null = Read-Host
