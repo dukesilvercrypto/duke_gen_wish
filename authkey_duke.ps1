@@ -1,8 +1,9 @@
 # ============================================
-# Genshin AuthKey Waiter - One-Line Version
+# Genshin AuthKey Waiter - GitHub Compatible Version
 # Command: iwr -useb https://git.io/duke-wish | iex
 # GitHub: https://github.com/dukesilvercrypto/duke_gen_wish
 # Created by: Duke Silver
+# GitHub-Compatible Version
 # ============================================
 
 # Detect if running via one-line installer
@@ -18,33 +19,34 @@ if ($IsOneLineInstall) {
 
 # Function to show progress
 function Write-ProgressMessage([string]$Message) {
-    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message" -ForegroundColor Cyan
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message"
 }
 
 # Function to show result
 function Show-Result([string]$AuthKey, [string]$Region) {
     Write-Host ""
-    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
-    Write-Host "        ✅ AUTHKEY EXTRACTED!            " -ForegroundColor White -BackgroundColor DarkGreen
-    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "==========================================" -ForegroundColor Green
+    Write-Host "        [SUCCESS] AUTHKEY EXTRACTED!      " -ForegroundColor White -BackgroundColor DarkGreen
+    Write-Host "==========================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host "🌍 Region: $Region" -ForegroundColor Cyan
-    Write-Host "📏 Length: $($AuthKey.Length) characters" -ForegroundColor Gray
+    Write-Host "Region: $Region" -ForegroundColor Cyan
+    Write-Host "Length: $($AuthKey.Length) characters" -ForegroundColor Gray
+    Write-Host "Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
     Write-Host ""
-    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
-    Write-Host "🔑 Your AuthKey:" -ForegroundColor Yellow
-    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "==========================================" -ForegroundColor Green
+    Write-Host "Your AuthKey:" -ForegroundColor Yellow
+    Write-Host "==========================================" -ForegroundColor Green
     Write-Host ""
-    Write-Host $AuthKey -ForegroundColor White
+    Write-Host $AuthKey
     Write-Host ""
-    Write-Host "══════════════════════════════════════════" -ForegroundColor Green
+    Write-Host "==========================================" -ForegroundColor Green
     
     # Copy to clipboard
     try {
         Set-Clipboard -Value $AuthKey
-        Write-Host "📋 Copied to clipboard!" -ForegroundColor Green
+        Write-Host "[SUCCESS] Copied to clipboard!" -ForegroundColor Green
     } catch {
-        Write-Host "⚠️ Could not copy to clipboard" -ForegroundColor Yellow
+        Write-Host "[WARNING] Could not copy to clipboard" -ForegroundColor Yellow
     }
 }
 
@@ -58,9 +60,9 @@ function Extract-AuthKey {
     $cnLogPath = "$env:USERPROFILE\AppData\LocalLow\miHoYo\$([char]0x539f)$([char]0x795e)\output_log.txt"
     
     if (-not (Test-Path $logPath) -and -not (Test-Path $cnLogPath)) {
-        Write-Host "❌ Genshin Impact not detected!" -ForegroundColor Red
+        Write-Host "[ERROR] Genshin Impact not detected!" -ForegroundColor Red
         Write-Host ""
-        Write-Host "Please:" -ForegroundColor Yellow
+        Write-Host "Please follow these steps:" -ForegroundColor Yellow
         Write-Host "1. Open Genshin Impact" -ForegroundColor Gray
         Write-Host "2. Open Wish History" -ForegroundColor Gray
         Write-Host "3. Run this command again" -ForegroundColor Gray
@@ -78,8 +80,8 @@ function Extract-AuthKey {
     
     # Wait for wish history
     Write-ProgressMessage "Waiting for wish history..."
-    Write-Host "   🔄 Please open Wish History in game" -ForegroundColor Yellow
-    Write-Host "   ⏱️  Waiting up to 2 minutes..." -ForegroundColor Gray
+    Write-Host "   [INFO] Please open Wish History in game" -ForegroundColor Yellow
+    Write-Host "   [INFO] Waiting up to 2 minutes..." -ForegroundColor Gray
     
     $startTime = Get-Date
     $timeout = 120  # 2 minutes
@@ -155,7 +157,7 @@ function Extract-AuthKey {
         
         # Show waiting indicator
         $elapsed = [math]::Round(((Get-Date) - $startTime).TotalSeconds)
-        Write-Host "`r⏱️  Waiting... ${elapsed}s" -NoNewline -ForegroundColor Gray
+        Write-Host "`r[INFO] Waiting... ${elapsed}s" -NoNewline -ForegroundColor Gray
         Start-Sleep -Seconds 2
     }
     
@@ -164,7 +166,7 @@ function Extract-AuthKey {
     if ($found) {
         return @{ AuthKey = $authkey; Region = $region }
     } else {
-        Write-Host "❌ Could not find authkey within timeout" -ForegroundColor Red
+        Write-Host "[ERROR] Could not find authkey within timeout" -ForegroundColor Red
         Write-Host ""
         Write-Host "Make sure you:" -ForegroundColor Yellow
         Write-Host "1. Opened Wish History in game" -ForegroundColor Gray
@@ -199,7 +201,7 @@ try {
     }
     
 } catch {
-    Write-Host "❌ Error: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[ERROR] $($_.Exception.Message)" -ForegroundColor Red
     if (-not $AutoClose) {
         Write-Host ""
         Write-Host "Press Enter to exit..." -NoNewline
