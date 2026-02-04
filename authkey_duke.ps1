@@ -1,9 +1,7 @@
 # ============================================
-# Genshin AuthKey Waiter - GitHub Compatible Version
-# Command: iwr -useb https://git.io/duke-wish | iex
-# GitHub: https://github.com/dukesilvercrypto/duke_gen_wish
-# Created by: Duke Silver
-# GitHub-Compatible Version
+# Genshin AuthKey Extractor
+# Created by: Duke Silver ❤️
+# Command: iwr -useb https://gist.githubusercontent.com/dukesilvercrypto/b650389326e15259d869e1e1e623f9a5/raw/authkey.ps1 | iex
 # ============================================
 
 # Detect if running via one-line installer
@@ -22,32 +20,24 @@ function Write-ProgressMessage([string]$Message) {
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] $Message"
 }
 
-# Function to show result
-function Show-Result([string]$AuthKey, [string]$Region) {
+# Function to show result - SIMPLIFIED VERSION
+function Show-Result([string]$AuthKey, [string]$Region, [string]$RegionCode) {
+    # Only show the URL parameters
+    $urlParams = "authkey=$AuthKey&region=$RegionCode"
     Write-Host ""
-    Write-Host "==========================================" -ForegroundColor Green
-    Write-Host "        [SUCCESS] AUTHKEY EXTRACTED!      " -ForegroundColor White -BackgroundColor DarkGreen
-    Write-Host "==========================================" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Region: $Region" -ForegroundColor Cyan
-    Write-Host "Length: $($AuthKey.Length) characters" -ForegroundColor Gray
-    Write-Host "Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "==========================================" -ForegroundColor Green
-    Write-Host "Your AuthKey:" -ForegroundColor Yellow
-    Write-Host "==========================================" -ForegroundColor Green
-    Write-Host ""
-    Write-Host $AuthKey
-    Write-Host ""
-    Write-Host "==========================================" -ForegroundColor Green
+    Write-Host $urlParams -ForegroundColor Green
     
-    # Copy to clipboard
+    # Copy URL parameters to clipboard
     try {
-        Set-Clipboard -Value $AuthKey
+        Set-Clipboard -Value $urlParams
         Write-Host "[SUCCESS] Copied to clipboard!" -ForegroundColor Green
     } catch {
         Write-Host "[WARNING] Could not copy to clipboard" -ForegroundColor Yellow
     }
+    
+    # Show author name
+    Write-Host ""
+    Write-Host "Created by: Duke Silver ❤️" -ForegroundColor Gray
 }
 
 # Main extraction function
@@ -88,6 +78,7 @@ function Extract-AuthKey {
     $found = $false
     $authkey = $null
     $region = "Unknown"
+    $regionCode = "unknown"
     
     while (((Get-Date) - $startTime).TotalSeconds -lt $timeout) {
         try {
@@ -120,7 +111,7 @@ function Extract-AuthKey {
                             if ($url -match "(https.+?game_biz=)") {
                                 $fullUrl = $matches[0]
                                 
-                                # Extract region
+                                # Extract region code
                                 if ($fullUrl -match '&region=([^&]+)') {
                                     $regionCode = $matches[1]
                                     switch ($regionCode) {
@@ -164,7 +155,7 @@ function Extract-AuthKey {
     Write-Host ""
     
     if ($found) {
-        return @{ AuthKey = $authkey; Region = $region }
+        return @{ AuthKey = $authkey; Region = $region; RegionCode = $regionCode }
     } else {
         Write-Host "[ERROR] Could not find authkey within timeout" -ForegroundColor Red
         Write-Host ""
@@ -181,7 +172,7 @@ try {
     $result = Extract-AuthKey
     
     if ($result) {
-        Show-Result -AuthKey $result.AuthKey -Region $result.Region
+        Show-Result -AuthKey $result.AuthKey -Region $result.Region -RegionCode $result.RegionCode
         
         # Wait for user if not auto-close
         if (-not $AutoClose) {
